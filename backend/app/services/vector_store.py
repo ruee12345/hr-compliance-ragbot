@@ -2,8 +2,7 @@ import os
 import pickle
 import numpy as np
 from typing import List, Dict, Any
-import faiss
-from sentence_transformers import SentenceTransformer
+import voyageai
 from app.core.config import settings
 
 class VectorStore:
@@ -20,47 +19,46 @@ class VectorStore:
         if self._initialized:
             return
             
-        print(f"DEBUG: Initializing VectorStore with Sentence Transformers (Local)")
+        print(f"DEBUG: Initializing VectorStore with Voyage AI API")
         
-        # Initialize local embedding model (smaller model for low memory)
-        self.embedding_model = SentenceTransformer('paraphrase-albert-small-v2')  # Smaller model, less RAM
+        # Initialize Voyage AI client
+        self.voyage_client = voyageai.Client(api_key=settings.voyage_api_key)
         
         self.vector_store_path = settings.vector_store_path
-        self.index = None
         self.documents = []  # Store document chunks
-        self.metadata = []   # Store metadata for each chunk
+        self.embeddings = []  # Store embeddings
         
         # Create vector store directory if it doesn't exist
         os.makedirs(self.vector_store_path, exist_ok=True)
         print(f"DEBUG: Vector store path: {self.vector_store_path}")
         
-        # Try to load existing index
+        # Try to load existing data
         self.load_index()
         
         self._initialized = True
     
     def create_embeddings(self, texts: List[str]) -> np.ndarray:
-        """Create embeddings for list of texts using Local Model"""
-        print(f"DEBUG: Creating embeddings for {len(texts)} texts locally")
+        """Create embeddings using Voyage AI API"""
+        print(f"DEBUG: Creating embeddings for {len(texts)} texts using Voyage AI")
         
         if not texts:
             return np.array([])
         
         try:
-            # Create embeddings locally
-            embeddings = self.embedding_model.encode(
-                texts, 
-                convert_to_numpy=True,
-                normalize_embeddings=True,
-                show_progress_bar=False
+            # Use Voyage AI API
+            result = self.voyage_client.embed(
+                texts=texts,
+                model="voyage-2",
+                input_type="document"
             )
-            print(f"DEBUG: Local embeddings shape: {embeddings.shape}")
-            return embeddings.astype(np.float32)
+            embeddings = np.array(result.embeddings, dtype=np.float32)
+            print(f"DEBUG: Voyage AI embeddings shape: {embeddings.shape}")
+            return embeddings
             
         except Exception as e:
-            print(f"DEBUG ERROR: Local embedding failed: {e}")
-            print("DEBUG: Using random embeddings as fallback")
-            dimension = 384  # all-MiniLM-L6-v2 dimension
+            print(f"DEBUG ERROR: Voyage AI embedding failed: {e}")
+            # Fallback to random embeddings
+            dimension = 1024  # voyage-2 dimension
             return np.random.randn(len(texts), dimension).astype(np.float32)
     
     def add_documents(self, documents: List[Dict[str, Any]]):
@@ -75,130 +73,113 @@ class VectorStore:
         texts = [doc["text"] for doc in documents]
         print(f"DEBUG: First text sample: {texts[0][:100]}...")
         
-        # Create embeddings using local model
-        embeddings = self.create_embeddings(texts)
-        print(f"DEBUG: Created embeddings shape: {embeddings.shape}")
+        # Create embeddings using Voyage AI
+        new_embeddings = self.create_embeddings(texts)
+        print(f"DEBUG: Created embeddings shape: {new_embeddings.shape}")
         
-        # Initialize or extend FAISS index
-        if self.index is None:
-            dimension = embeddings.shape[1]
-            self.index = faiss.IndexFlatL2(dimension)
-            print(f"DEBUG: Created new FAISS index with dimension {dimension}")
-        else:
-            print(f"DEBUG: Extending existing FAISS index")
-        
-        # Add to index
-        self.index.add(embeddings)
-        print(f"DEBUG: Added embeddings to FAISS index")
-        
-        # Store documents and metadata
+        # Store documents and embeddings
         self.documents.extend(documents)
-        self.metadata.extend([{"doc_id": len(self.documents) - 1, **doc} for doc in documents])
+        if len(self.embeddings) == 0:
+            self.embeddings = new_embeddings
+        else:
+            self.embeddings = np.vstack([self.embeddings, new_embeddings])
+        
         print(f"DEBUG: Now have {len(self.documents)} total documents")
         
-        # Save index
+        # Save
         self.save_index()
-        print(f"DEBUG: Saved index to {self.vector_store_path}")
+        print(f"DEBUG: Saved to {self.vector_store_path}")
     
     def search(self, query: str, k: int = 10) -> List[Dict[str, Any]]:
-        """Search for similar documents"""
+        """Search for similar documents using cosine similarity"""
         print(f"DEBUG: Searching for query: '{query}'")
-        
-        if self.index is None:
-            print("DEBUG: Index is None, loading...")
-            self.load_index()
-            if self.index is None:
-                print("DEBUG: Still None after load, returning empty")
-                return []
         
         if len(self.documents) == 0:
             print("DEBUG: No documents in store, returning empty results")
             return []
         
-        print(f"DEBUG: Index has {self.index.ntotal} vectors, store has {len(self.documents)} documents")
+        print(f"DEBUG: Store has {len(self.documents)} documents")
         
-        # Create query embedding using local model
-        query_embedding = self.create_embeddings([query])
-        print(f"DEBUG: Query embedding shape: {query_embedding.shape}")
+        # Create query embedding using Voyage AI
+        try:
+            result = self.voyage_client.embed(
+                texts=[query],
+                model="voyage-2",
+                input_type="query"
+            )
+            query_embedding = np.array(result.embeddings[0], dtype=np.float32)
+        except Exception as e:
+            print(f"DEBUG ERROR: Query embedding failed: {e}")
+            return []
         
-        # Search
-        distances, indices = self.index.search(query_embedding, k)
-        print(f"DEBUG: Search results - distances: {distances}, indices: {indices}")
+        # Calculate cosine similarity
+        # Normalize embeddings
+        query_norm = query_embedding / (np.linalg.norm(query_embedding) + 1e-8)
+        doc_norms = self.embeddings / (np.linalg.norm(self.embeddings, axis=1, keepdims=True) + 1e-8)
+        
+        # Compute similarities
+        similarities = np.dot(doc_norms, query_norm)
+        
+        # Get top k indices
+        top_k = min(k, len(similarities))
+        top_indices = np.argsort(similarities)[::-1][:top_k]
         
         # Prepare results
         results = []
-        for i, (distance, idx) in enumerate(zip(distances[0], indices[0])):
-            if idx >= 0 and idx < len(self.documents):
-                results.append({
-                    "document": self.documents[idx],
-                    "metadata": self.metadata[idx],
-                    "score": float(distance),
-                    "rank": i + 1
-                })
-                print(f"DEBUG: Result {i+1}: idx={idx}, distance={distance:.4f}")
-            else:
-                print(f"DEBUG: Invalid index {idx}, skipping")
+        for i, idx in enumerate(top_indices):
+            results.append({
+                "document": self.documents[idx],
+                "metadata": self.documents[idx],
+                "score": float(similarities[idx]),
+                "rank": i + 1
+            })
+            print(f"DEBUG: Result {i+1}: idx={idx}, similarity={similarities[idx]:.4f}")
         
         print(f"DEBUG: Returning {len(results)} results")
         return results
     
     def save_index(self):
-        """Save index to disk"""
-        if self.index is not None:
-            print(f"DEBUG: Saving index with {len(self.documents)} documents")
-            
-            # Save FAISS index
-            index_path = os.path.join(self.vector_store_path, "index.faiss")
-            try:
-                faiss.write_index(self.index, index_path)
-                print(f"DEBUG: Saved FAISS index to {index_path}")
-            except Exception as e:
-                print(f"DEBUG ERROR: Failed to save FAISS index: {e}")
-            
-            # Save documents and metadata
-            docs_path = os.path.join(self.vector_store_path, "documents.pkl")
-            try:
-                with open(docs_path, "wb") as f:
-                    pickle.dump(self.documents, f)
-                print(f"DEBUG: Saved documents to {docs_path}")
-            except Exception as e:
-                print(f"DEBUG ERROR: Failed to save documents: {e}")
-            
-            meta_path = os.path.join(self.vector_store_path, "metadata.pkl")
-            try:
-                with open(meta_path, "wb") as f:
-                    pickle.dump(self.metadata, f)
-                print(f"DEBUG: Saved metadata to {meta_path}")
-            except Exception as e:
-                print(f"DEBUG ERROR: Failed to save metadata: {e}")
-        else:
-            print("DEBUG: Cannot save - index is None")
+        """Save documents and embeddings to disk"""
+        print(f"DEBUG: Saving {len(self.documents)} documents")
+        
+        # Save documents
+        docs_path = os.path.join(self.vector_store_path, "documents.pkl")
+        try:
+            with open(docs_path, "wb") as f:
+                pickle.dump(self.documents, f)
+            print(f"DEBUG: Saved documents to {docs_path}")
+        except Exception as e:
+            print(f"DEBUG ERROR: Failed to save documents: {e}")
+        
+        # Save embeddings
+        emb_path = os.path.join(self.vector_store_path, "embeddings.npy")
+        try:
+            np.save(emb_path, self.embeddings)
+            print(f"DEBUG: Saved embeddings to {emb_path}")
+        except Exception as e:
+            print(f"DEBUG ERROR: Failed to save embeddings: {e}")
     
     def load_index(self):
-        """Load index from disk"""
-        index_path = os.path.join(self.vector_store_path, "index.faiss")
+        """Load documents and embeddings from disk"""
         docs_path = os.path.join(self.vector_store_path, "documents.pkl")
-        meta_path = os.path.join(self.vector_store_path, "metadata.pkl")
+        emb_path = os.path.join(self.vector_store_path, "embeddings.npy")
         
-        print(f"DEBUG: Checking for existing index at {index_path}")
+        print(f"DEBUG: Checking for existing data at {docs_path}")
         
-        if os.path.exists(index_path) and os.path.exists(docs_path):
+        if os.path.exists(docs_path) and os.path.exists(emb_path):
             try:
-                print(f"DEBUG: Loading existing index...")
-                self.index = faiss.read_index(index_path)
+                print(f"DEBUG: Loading existing data...")
                 with open(docs_path, "rb") as f:
                     self.documents = pickle.load(f)
-                with open(meta_path, "rb") as f:
-                    self.metadata = pickle.load(f)
-                print(f"DEBUG: Loaded vector store with {len(self.documents)} documents")
+                self.embeddings = np.load(emb_path)
+                print(f"DEBUG: Loaded {len(self.documents)} documents")
             except Exception as e:
-                print(f"DEBUG ERROR: Error loading vector store: {e}")
-                self.index = None
+                print(f"DEBUG ERROR: Error loading data: {e}")
                 self.documents = []
-                self.metadata = []
+                self.embeddings = np.array([])
         else:
-            print(f"DEBUG: No existing index found")
-    
+            print(f"DEBUG: No existing data found")
+            self.embeddings = np.array([])
 
     def remove_document(self, filename: str) -> bool:
         """Remove all chunks for a specific document"""
@@ -208,7 +189,7 @@ class VectorStore:
             print(f"DEBUG: No documents to remove")
             return False
         
-        # Find indices of chunks to keep
+        # Find indices to keep
         keep_indices = []
         for i, doc in enumerate(self.documents):
             if doc.get("filename") != filename:
@@ -218,34 +199,14 @@ class VectorStore:
             print(f"DEBUG: Document '{filename}' not found")
             return False
         
-        print(f"DEBUG: Keeping {len(keep_indices)} chunks, removing {len(self.documents) - len(keep_indices)} chunks")
+        print(f"DEBUG: Keeping {len(keep_indices)} chunks")
         
-        # Rebuild everything from scratch (simpler than selective FAISS removal)
-        # 1. Keep only documents we want
-        new_documents = [self.documents[i] for i in keep_indices]
-        new_metadata = [self.metadata[i] for i in keep_indices]
+        # Keep only selected documents and embeddings
+        self.documents = [self.documents[i] for i in keep_indices]
+        if len(self.embeddings) > 0:
+            self.embeddings = self.embeddings[keep_indices]
         
-        # 2. If we have documents left, rebuild index
-        if new_documents:
-            # Extract texts
-            texts = [doc["text"] for doc in new_documents]
-            
-            # Create new embeddings
-            embeddings = self.create_embeddings(texts)
-            
-            # Create new index
-            dimension = embeddings.shape[1]
-            self.index = faiss.IndexFlatL2(dimension)
-            self.index.add(embeddings)
-        else:
-            # No documents left
-            self.index = None
-        
-        # 3. Update stored data
-        self.documents = new_documents
-        self.metadata = new_metadata
-        
-        # 4. Save updated index
+        # Save
         self.save_index()
         print(f"DEBUG: Successfully removed document '{filename}'")
         return True
@@ -253,12 +214,11 @@ class VectorStore:
     def clear(self):
         """Clear vector store"""
         print(f"DEBUG: Clearing vector store")
-        self.index = None
         self.documents = []
-        self.metadata = []
+        self.embeddings = np.array([])
         
         # Delete saved files
-        for filename in ["index.faiss", "documents.pkl", "metadata.pkl"]:
+        for filename in ["documents.pkl", "embeddings.npy"]:
             filepath = os.path.join(self.vector_store_path, filename)
             if os.path.exists(filepath):
                 os.remove(filepath)
