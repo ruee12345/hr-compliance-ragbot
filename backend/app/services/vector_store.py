@@ -22,8 +22,8 @@ class VectorStore:
             
         print(f"DEBUG: Initializing VectorStore with Sentence Transformers (Local)")
         
-        # Initialize local embedding model
-        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        # Initialize local embedding model (smaller model for low memory)
+        self.embedding_model = SentenceTransformer('paraphrase-albert-small-v2')  # Smaller model, less RAM
         
         self.vector_store_path = settings.vector_store_path
         self.index = None
