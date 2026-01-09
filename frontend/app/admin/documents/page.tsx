@@ -1,18 +1,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import Link from 'next/link';
-import { documentsApi, API_URL } from '@/lib/api';
-
-interface Document {
-  filename: string;
-  chunks: number;
-  file_type: string;
-  file_size: number;
-  uploaded_at: string;
-  file_path: string;
-}
+import { useRouter } from 'next/navigation';
+import { documentsApi } from '@/lib/api';
+import type { Document } from '@/lib/types';
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -65,7 +57,7 @@ export default function DocumentsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+    return new Date(dateString).toLocaleDateString();
   };
 
   return (
@@ -158,7 +150,7 @@ export default function DocumentsPage() {
                     <td className="p-4 border-b text-gray-700">{formatFileSize(doc.file_size)}</td>
                     <td className="p-4 border-b">
                       <span className="px-3 py-1 bg-[#8c6c57] text-white rounded-full text-sm font-bold">
-                        {doc.chunks} chunks
+                        {doc.total_chunks} chunks
                       </span>
                     </td>
                     <td className="p-4 border-b text-gray-700">{formatDate(doc.uploaded_at)}</td>

@@ -42,6 +42,7 @@ export default function EmployeeChatPage() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string>("");
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
@@ -76,12 +77,17 @@ export default function EmployeeChatPage() {
         conversation_id: conversationId || undefined,
       });
 
+      // Set conversation ID from response
+      if (response.conversation_id) {
+        setConversationId(response.conversation_id);
+      }
+
       const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: response.data.answer,
-        isUser: false,
+        id: Date.now().toString() + "-ai",
+        content: response.answer,
+        isUser: false, // Assuming 'isUser' should remain, as 'role' is not in Message interface
         timestamp: new Date(),
-        sources: response.data.sources,
+        sources: response.sources,
       };
 
       setMessages((prev) => [...prev, aiMessage]);
