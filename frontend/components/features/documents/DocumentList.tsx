@@ -1,21 +1,13 @@
-'use client';
-
 import React from 'react';
 import DocumentCard from './DocumentCard';
 import { useDocuments } from '@/lib/hooks';
-import { Card } from '@/components/ui';
+import { Card, LoadingSkeleton } from '@/components/ui';
 
 const DocumentList: React.FC = () => {
   const { documents, isLoading, deleteDocument, isDeleting } = useDocuments();
 
   if (isLoading) {
-    return (
-      <Card>
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      </Card>
-    );
+    return <LoadingSkeleton type="list" count={3} />;
   }
 
   if (documents.length === 0) {
