@@ -134,11 +134,35 @@ class PDFProcessor:
         else:
             raise ValueError(f"Unsupported file type: {file_type}")
     
+    
     def chunk_text(self, text: str) -> List[str]:
-        chunks = self.text_splitter.split_text(text)
+        """Simple text chunking without langchain"""
+        chunks = []
+        text_length = len(text)
+        start = 0
+        
+        while start < text_length:
+            end = start + self.chunk_size
+            
+            # If not the last chunk, try to break at a sentence or word boundary
+            if end < text_length:
+                # Look for sentence boundary (. ! ?)
+                for i in range(end, max(start, end - 200), -1):
+                    if text[i] in '.!?\n':
+                        end = i + 1
+                        break
+            
+            chunk = text[start:end].strip()
+            if chunk:
+                chunks.append(chunk)
+            
+            # Move start position with overlap
+            start = end - self.chunk_overlap if end < text_length else text_length
+        
         # Clean each chunk
         cleaned_chunks = [self.clean_extracted_text(chunk) for chunk in chunks]
         return cleaned_chunks
+
     
     def process_document(self, file_path: str, file_type: str) -> Dict[str, Any]:
         try:
