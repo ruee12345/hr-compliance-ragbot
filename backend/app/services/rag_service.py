@@ -4,7 +4,7 @@ from datetime import date, datetime
 from app.services.vector_store import VectorStore
 from app.services.pdf_processor import PDFProcessor
 from app.core.config import settings
-import ollama
+import openai
 
 # Simple conversation memory store
 conversation_store = {}
@@ -200,18 +200,23 @@ INSTRUCTIONS:
 
 ANSWER:"""
         
+        
         try:
-            response = ollama.generate(
-                model="llama3.2",
-                prompt=prompt,
-                options={
-                    'temperature': 0.1,
-                    'num_predict': 512
-                }
+            # Set OpenAI API key
+            openai.api_key = settings.openai_api_key
+            
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are an HR Policy Assistant. Answer based STRICTLY on the provided context."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,
+                max_tokens=512
             )
-            return response['response']
+            return response.choices[0].message.content
         except Exception as e:
-            print(f"Ollama error: {e}")
+            print(f"OpenAI error: {e}")
             return f"Based on the HR policies, here's what I found:\n\n{context[:1000]}"
     
     def get_document_count(self) -> int:
