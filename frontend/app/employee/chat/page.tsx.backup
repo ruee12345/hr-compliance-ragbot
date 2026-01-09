@@ -1,0 +1,255 @@
+"use client";
+
+import { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
+import { useSearchParams } from 'next/navigation';
+
+interface Message {
+  id: string;
+  content: string;
+  isUser: boolean;
+  timestamp: Date;
+  sources?: Source[];
+}
+
+interface Source {
+  text: string;
+  filename: string;
+  chunk_id: number;
+}
+
+const QUICK_QUESTIONS = [
+  "What is the company leave policy?",
+  "What are the work from home rules?",
+  "How does the salary structure work?",
+  "What is the notice period policy?",
+  "Show me the company holiday list",
+  "What is the dress code policy?",
+  "Tell me about health insurance benefits",
+  "What are the office timings?"
+];
+
+export default function EmployeeChatPage() {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      content: "Hello! I'm your HR Assistant. Ask me anything about company policies, benefits, or procedures.",
+      isUser: false,
+      timestamp: new Date(),
+    },
+  ]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const searchParams = useSearchParams();
+  const documentFilter = searchParams.get('doc');
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: input,
+      isUser: true,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const response = await axios.post('http://localhost:8000/api/rag/ask', {
+        question: input,
+        session_id: sessionId,
+      });
+
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: response.data.answer,
+        isUser: false,
+        timestamp: new Date(),
+        sources: response.data.sources,
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: 'Sorry, I encountered an error. Please try again.',
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickQuestion = async (question: string) => {
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: question,
+      isUser: true,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setLoading(true);
+
+    try {
+      const response = await axios.post('http://localhost:8000/api/rag/ask', {
+        question: question,
+        session_id: sessionId,
+      });
+
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: response.data.answer,
+        isUser: false,
+        timestamp: new Date(),
+        sources: response.data.sources,
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: 'Sorry, I encountered an error. Please try again.',
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#f0f8ff] to-[#e6f7ff] p-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#0084bd] to-[#72deff] text-white rounded-2xl p-8 mb-6 shadow-xl">
+          <h1 className="text-3xl font-bold mb-2" style={{ fontFamily: 'Montserrat, Georgia, serif' }}>
+            HR Policy Assistant
+          </h1>
+          <p className="text-lg opacity-90">Ask questions about company policies, benefits, and procedures</p>
+          {documentFilter && (
+            <div className="mt-4 px-4 py-2 bg-white/20 rounded-lg inline-block">
+              📄 Filtering by: {documentFilter}
+            </div>
+          )}
+        </div>
+
+        {/* Chat Container */}
+        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6 border-2 border-[#0084bd]/20">
+          {/* Messages */}
+          <div className="h-[400px] overflow-y-auto mb-6 pr-4">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`mb-6 ${message.isUser ? 'text-right' : 'text-left'}`}
+              >
+                <div
+                  className={`inline-block max-w-[80%] rounded-2xl p-4 ${
+                    message.isUser
+                      ? 'bg-gradient-to-r from-[#0084bd] to-[#72deff] text-white'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  <div className={`text-xs mt-2 ${message.isUser ? 'text-blue-100' : 'text-gray-500'}`}>
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+
+                {/* Sources */}
+                {!message.isUser && message.sources && message.sources.length > 0 && (
+                  <div className="mt-4 ml-4 text-left">
+                    <div className="text-xs font-bold text-[#0084bd] mb-2">Sources:</div>
+                    <div className="space-y-3">
+                      {message.sources.map((source, idx) => (
+                        <div key={idx} className="bg-[#f0f8ff] border-2 border-[#72deff] rounded-lg p-3">
+                          <div className="flex items-start">
+                            <div className="text-[#0084bd] mr-2">📄</div>
+                            <div className="flex-1">
+                              <div className="font-bold text-gray-800 text-sm">{source.filename}</div>
+                              <div className="text-xs text-gray-700 mt-2">{source.text}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+            {loading && (
+              <div className="text-left mb-6">
+                <div className="inline-block bg-gray-100 text-gray-800 rounded-2xl p-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Quick Ask Section */}
+          <div className="mb-6">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-gray-600 text-xs font-semibold uppercase tracking-wider">QUICK ASK</span>
+              <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent"></div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {["Leave Policy", "Work From Home", "Salary Structure", "Notice Period", 
+                "Holiday List", "Dress Code", "Health Insurance", "Office Timings"].map((title, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleQuickQuestion(QUICK_QUESTIONS[idx])}
+                  className="p-3 bg-gradient-to-r from-white to-gray-50 backdrop-blur-sm border border-gray-200 rounded-lg text-gray-700 text-sm font-medium hover:border-[#0084bd] hover:text-[#0084bd] hover:shadow-md transition-all duration-300"
+                >
+                  {title}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Input Form */}
+          <form onSubmit={handleSubmit} className="flex space-x-4">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about HR policies, benefits, leave requests..."
+              className="flex-1 p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-[#0084bd] text-black placeholder-gray-500"
+              disabled={loading}
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-gradient-to-r from-[#0084bd] to-[#72deff] text-white px-8 py-4 rounded-xl font-bold hover:opacity-90 transition disabled:opacity-50"
+            >
+              {loading ? 'Thinking...' : 'Ask'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
