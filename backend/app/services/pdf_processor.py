@@ -3,7 +3,6 @@ import docx
 import os
 import re
 from typing import List, Dict, Any
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.core.config import settings
 
 try:
@@ -17,11 +16,7 @@ class PDFProcessor:
     def __init__(self):
         self.chunk_size = settings.chunk_size
         self.chunk_overlap = settings.chunk_overlap
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self.chunk_size,
-            chunk_overlap=self.chunk_overlap,
-            length_function=len,
-        )
+
     
     def clean_extracted_text(self, text: str) -> str:
         """Clean common PDF extraction artifacts - IMPROVED"""
