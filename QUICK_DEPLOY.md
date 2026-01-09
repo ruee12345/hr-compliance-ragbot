@@ -17,7 +17,7 @@ git add .
 git commit -m "Add deployment configuration for Vercel and Render"
 
 # Create repository on GitHub, then:
-git remote add origin https://github.com/YOUR_USERNAME/hr-compliance-rag-bot.git
+git remote add origin https://github.com/ruee12345/hr-compliance-ragbot.git
 git branch -M main
 git push -u origin main
 ```
@@ -37,9 +37,9 @@ git push -u origin main
 5. **Environment Variables** (click Advanced):
    ```
    VOYAGE_API_KEY=pa-iznSYTT-ntR0a_wgXP29udIem0x9WvVt0U6cKb6BAFX
-   SECRET_KEY=your-super-secret-jwt-key-change-this-in-production
+   SECRET_KEY=hr-bot-2024-production-key-divesh-secure-xyz789
    DEBUG=false
-   FRONTEND_URL=https://your-app.vercel.app
+   FRONTEND_URL=https://hr-compliance-rag-bot.vercel.app
    UPLOAD_FOLDER=./data/documents
    VECTOR_STORE_PATH=./data/vector_store
    ```
