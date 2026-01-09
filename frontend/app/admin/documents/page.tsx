@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { API_BASE_URL, API_ENDPOINTS } from '@/lib/api';
+import { documentsApi, API_URL } from '@/lib/api';
 
 interface Document {
   filename: string;
@@ -27,8 +26,8 @@ export default function DocumentsPage() {
 
   const fetchDocuments = async () => {
     try {
-      const response = await axios.get(API_ENDPOINTS.documents);
-      setDocuments(response.data.documents);
+      const data = await documentsApi.getAll();
+      setDocuments(data);
     } catch (error) {
       console.error('Error fetching documents:', error);
     } finally {
@@ -43,8 +42,7 @@ export default function DocumentsPage() {
 
     setDeleting(filename);
     try {
-      const encodedFilename = encodeURIComponent(filename);
-      await axios.delete(`${API_BASE_URL}/api/documents/${encodedFilename}`);
+      await documentsApi.delete(filename);
       
       // Refresh the list
       await fetchDocuments();

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
-import { API_ENDPOINTS } from '@/lib/api';
+import { documentsApi } from '@/lib/api';
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<any>(null);
@@ -15,8 +15,8 @@ export default function AdminDashboardPage() {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(API_ENDPOINTS.documentStats);
-      setStats(response.data);
+      const data = await documentsApi.getStats();
+      setStats(data);
     } catch (error) {
       console.error('Error fetching stats:', error);
     } finally {

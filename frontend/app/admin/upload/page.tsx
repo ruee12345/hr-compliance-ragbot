@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import axios from 'axios';
 import { useDropzone } from 'react-dropzone';
 import Link from 'next/link';
-import { API_ENDPOINTS } from '@/lib/api';
+import { documentsApi } from '@/lib/api';
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
 
@@ -64,25 +64,10 @@ export default function AdminUploadPage() {
         });
       }, 200);
 
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('category', category);
-
-      const response = await axios.post(
-        API_ENDPOINTS.uploadDocument,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / (progressEvent.total || 100)
-            );
-            setUploadProgress(percentCompleted);
-          }
-        }
-      );
+      // The original `setUploading(true)` and `setError(null)` are already handled by the lines above.
+      const response = await documentsApi.upload(file, category, (progress) => {
+        setUploadProgress(progress);
+      });
 
       clearInterval(progressInterval);
       setUploadProgress(100);

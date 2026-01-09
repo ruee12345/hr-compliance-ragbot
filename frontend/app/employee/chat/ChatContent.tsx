@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
+import { format } from 'date-fns';
 import { useSearchParams } from "next/navigation";
-import { API_ENDPOINTS } from '@/lib/api';
+import { ragApi } from '@/lib/api';
 
 interface Message {
   id: string;
@@ -70,9 +71,9 @@ export default function EmployeeChatPage() {
     setLoading(true);
 
     try {
-      const response = await axios.post(API_ENDPOINTS.askQuestion, {
+      const response = await ragApi.query({
         question: input,
-        session_id: sessionId,
+        conversation_id: conversationId || undefined,
       });
 
       const aiMessage: Message = {
