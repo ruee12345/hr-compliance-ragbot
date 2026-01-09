@@ -148,7 +148,7 @@ export default function AdminDashboardPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {documents.slice(0, 5).map((doc) => (
+              {Array.isArray(documents) && documents.slice(0, 5).map((doc) => (
                 <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="text-2xl">
