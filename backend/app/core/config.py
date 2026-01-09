@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # OpenAI (optional fallback)
     openai_api_key: str = ""
     
+    # Database
+    database_url: str = "sqlite:///./hr_compliance.db"
+    
     # Authentication
     secret_key: str = "your-super-secret-jwt-key-change-this-in-production"
     debug: bool = True
