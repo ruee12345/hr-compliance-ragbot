@@ -9,8 +9,9 @@ export const documentsApi = {
    * Get all documents
    */
   getAll: async (): Promise<Document[]> => {
-    const response = await apiClient.get<Document[]>('/api/documents');
-    return response.data;
+    const response = await apiClient.get<{ documents: any[] }>('/api/documents');
+    // Backend returns { total_documents, documents } - we need just the documents array
+    return response.data.documents || [];
   },
 
   /**
@@ -31,7 +32,7 @@ export const documentsApi = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await apiClient.post<UploadResponse>('/api/documents', formData, {
+    const response = await apiClient.post<UploadResponse>('/api/documents/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
