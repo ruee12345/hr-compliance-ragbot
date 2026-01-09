@@ -1,12 +1,11 @@
-"use client";
+import { ChatContainer } from '@/components/features/chat';
 
-import { Suspense } from "react";
-import ChatContent from "./ChatContent";
-
-export default function ChatPage() {
+export default function EmployeeChatPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#72deff] to-[#0084b4]">Loading chat interface...</div>}>
-      <ChatContent />
-    </Suspense>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-5xl mx-auto">
+        <ChatContainer />
+      </div>
+    </div>
   );
 }

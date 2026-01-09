@@ -1,132 +1,177 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from 'react';
-import axios from 'axios';
 import Link from 'next/link';
-import { documentsApi } from '@/lib/api';
+import { useDocuments } from '@/lib/hooks';
+import { Card } from '@/components/ui';
 
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
-    try {
-      const data = await documentsApi.getStats();
-      setStats(data);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { stats, documents, isLoading, isLoadingStats } = useDocuments();
 
   return (
-    <div>
-      {/* Welcome Card */}
-      <div className="bg-gradient-to-r from-[#0084bd] to-[#72deff] text-white rounded-2xl p-8 mb-8 shadow-xl">
-        <h1 className="text-3xl font-bold mb-2" style={{ fontFamily: 'Montserrat, Georgia, serif' }}>
-          Welcome to Admin Dashboard
-        </h1>
-        <p className="text-lg opacity-90">Manage HR policy documents and monitor AI assistant performance</p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {/* Card 1: Uploaded Files */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-[#feffba]">
-          <div className="text-4xl font-bold text-[#0084bd] mb-2">
-            {loading ? '...' : stats?.total_documents || 0}
-          </div>
-          <div className="font-bold text-gray-800">Uploaded Files</div>
-          <p className="text-sm text-gray-600 mt-2">HR documents in system</p>
-        </div>
-
-        {/* Card 2: AI Memory Chunks */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-[#8c6c57]">
-          <div className="text-4xl font-bold text-[#8c6c57] mb-2">
-            {loading ? '...' : stats?.total_chunks || 0}
-          </div>
-          <div className="font-bold text-gray-800">AI Memory Chunks</div>
-          <p className="text-sm text-gray-600 mt-2">Searchable text pieces</p>
-        </div>
-
-        {/* Card 3: Vector Store Status */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-[#b22727]">
-          <div className="text-4xl font-bold text-[#b22727] mb-2">
-            {loading ? '...' : stats?.vector_store_loaded ? '✅' : '❌'}
-          </div>
-          <div className="font-bold text-gray-800">Vector Store</div>
-          <p className="text-sm text-gray-600 mt-2">
-            {loading ? 'Checking...' : stats?.vector_store_loaded ? 'Loaded & Ready' : 'Not Loaded'}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <p className="text-blue-100 mt-2">
+            Manage documents and monitor system activity
           </p>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-xl p-6 shadow-lg mb-8 border-2 border-[#0084bd]/20">
-        <h2 className="text-xl font-bold text-[#0084bd] mb-4" style={{ fontFamily: 'Montserrat, Georgia, serif' }}>
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link
-            href="/admin/documents"
-            className="p-4 bg-gradient-to-r from-[#feffba] to-[#fffbc8] rounded-lg border-2 border-[#8c6c57] hover:border-[#0084bd] transition group"
-          >
-            <div className="text-2xl mb-2">📚</div>
-            <div className="font-bold text-gray-800">View Documents</div>
-            <p className="text-sm text-gray-600">Manage uploaded files</p>
-          </Link>
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card padding="md">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Documents</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {isLoadingStats ? '...' : stats?.total_documents || 0}
+                </p>
+              </div>
+              <div className="bg-blue-100 p-3 rounded-full">
+                <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+            </div>
+          </Card>
 
-          <Link
-            href="/admin/upload"
-            className="p-4 bg-gradient-to-r from-[#72deff] to-[#b3ebff] rounded-lg border-2 border-[#0084bd] hover:border-[#8c6c57] transition group"
-          >
-            <div className="text-2xl mb-2">📤</div>
-            <div className="font-bold text-gray-800">Upload New PDF</div>
-            <p className="text-sm text-gray-600">Add HR policy documents</p>
-          </Link>
-        </div>
-      </div>
+          <Card padding="md">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Chunks</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {isLoadingStats ? '...' : stats?.total_chunks || 0}
+                </p>
+              </div>
+              <div className="bg-green-100 p-3 rounded-full">
+                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </div>
+            </div>
+          </Card>
 
-      {/* Instructions */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-[#feffba]">
-        <h2 className="text-xl font-bold text-[#0084bd] mb-4" style={{ fontFamily: 'Montserrat, Georgia, serif' }}>
-          How to Use Admin Panel
-        </h2>
-        <div className="space-y-4">
-          <div className="flex items-start space-x-3">
-            <div className="text-[#0084bd] font-bold text-xl">1.</div>
-            <div>
-              <div className="font-bold text-gray-800">View Documents</div>
-              <p className="text-gray-600">Navigate to the Documents page to see all uploaded HR policy files</p>
+          <Card padding="md">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Size</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {isLoadingStats ? '...' : `${((stats?.total_size || 0) / (1024 * 1024)).toFixed(1)} MB`}
+                </p>
+              </div>
+              <div className="bg-purple-100 p-3 rounded-full">
+                <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                </svg>
+              </div>
             </div>
-          </div>
-          <div className="flex items-start space-x-3">
-            <div className="text-[#0084bd] font-bold text-xl">2.</div>
-            <div>
-              <div className="font-bold text-gray-800">Upload New Documents</div>
-              <p className="text-gray-600">Go to the Upload page to add new PDF files containing company policies</p>
+          </Card>
+
+          <Card padding="md">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">System Status</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">Active</p>
+              </div>
+              <div className="bg-green-100 p-3 rounded-full">
+                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
             </div>
-          </div>
-          <div className="flex items-start space-x-3">
-            <div className="text-[#0084bd] font-bold text-xl">3.</div>
-            <div>
-              <div className="font-bold text-gray-800">Documents are processed automatically</div>
-              <p className="text-gray-600">The system extracts text, creates embeddings, and stores in vector database</p>
-            </div>
-          </div>
-          <div className="flex items-start space-x-3">
-            <div className="text-[#0084bd] font-bold text-xl">4.</div>
-            <div>
-              <div className="font-bold text-gray-800">Employees can ask questions</div>
-              <p className="text-gray-600">Go to Employee Chat page to test questions about uploaded policies</p>
-            </div>
-          </div>
+          </Card>
         </div>
+
+        {/* Quick Actions */}
+        <Card title="Quick Actions" padding="md" className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link
+              href="/admin/upload"
+              className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+            >
+              <div className="bg-blue-600 p-2 rounded">
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">Upload Document</p>
+                <p className="text-sm text-gray-600">Add new policy</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/admin/documents"
+              className="flex items-center gap-3 p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+            >
+              <div className="bg-green-600 p-2 rounded">
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">View Documents</p>
+                <p className="text-sm text-gray-600">Manage library</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/employee/chat"
+              className="flex items-center gap-3 p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+            >
+              <div className="bg-purple-600 p-2 rounded">
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">Test Chat</p>
+                <p className="text-sm text-gray-600">Try the assistant</p>
+              </div>
+            </Link>
+          </div>
+        </Card>
+
+        {/* Recent Documents */}
+        <Card title="Recent Documents" padding="md">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : documents.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No documents uploaded yet
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {documents.slice(0, 5).map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="text-2xl">
+                      {doc.file_type === 'pdf' ? '📄' : doc.file_type === 'docx' ? '📝' : '📃'}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{doc.filename}</p>
+                      <p className="text-sm text-gray-500">
+                        {doc.total_chunks} chunks • {(doc.file_size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/admin/documents"
+                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    View →
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );
