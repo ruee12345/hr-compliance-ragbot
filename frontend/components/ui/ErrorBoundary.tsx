@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Component, ReactNode } from 'react';
-import { Card } from './Card';
+import Card from './Card';
 
 interface Props {
   children: ReactNode;
