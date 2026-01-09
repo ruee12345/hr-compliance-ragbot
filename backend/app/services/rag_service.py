@@ -4,7 +4,7 @@ from datetime import date, datetime
 from app.services.vector_store import VectorStore
 from app.services.pdf_processor import PDFProcessor
 from app.core.config import settings
-import openai
+from groq import Groq
 
 # Simple conversation memory store
 conversation_store = {}
@@ -202,11 +202,11 @@ ANSWER:"""
         
         
         try:
-            # Set OpenAI API key
-            openai.api_key = settings.openai_api_key
+            # Initialize Groq client (free!)
+            client = Groq(api_key=settings.groq_api_key)
             
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+            response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",  # Fast and free!
                 messages=[
                     {"role": "system", "content": "You are an HR Policy Assistant. Answer based STRICTLY on the provided context."},
                     {"role": "user", "content": prompt}
@@ -216,7 +216,7 @@ ANSWER:"""
             )
             return response.choices[0].message.content
         except Exception as e:
-            print(f"OpenAI error: {e}")
+            print(f"Groq error: {e}")
             return f"Based on the HR policies, here's what I found:\n\n{context[:1000]}"
     
     def get_document_count(self) -> int:

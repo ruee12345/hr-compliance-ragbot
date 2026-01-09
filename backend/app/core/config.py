@@ -10,8 +10,11 @@ class Settings(BaseSettings):
     
     upload_folder: str = "./data/documents"
     
-    # Voyage AI
+    # Voyage AI for embeddings
     voyage_api_key: str = ""
+    
+    # Groq for LLM (free!)
+    groq_api_key: str = ""
     
     # OpenAI (optional fallback)
     openai_api_key: str = ""
